@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- === CONFIGURACIÓN PARA VERSE COMO APLICACIÓN === -->
+  <meta name="theme-color" content="#003087">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+  
+  <title>Huachipato • Funciones por Puesto</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+  
+  <style>
+    body { font-family: system-ui, sans-serif; }
+    .card-hover { transition: all 0.3s; }
+    .card-hover:hover { transform: translateY(-8px); box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.3); }
+    .modal { animation: modalPop 0.3s ease-out; }
+    @keyframes modalPop { from { opacity: 0; transform: scale(0.85); } to { opacity: 1; transform: scale(1); } }
+  </style>
+</head>
+<body class="bg-slate-950 text-white min-h-screen">
+
+  <!-- HEADER -->
+  <header class="bg-[#003087] py-4 shadow-lg">
+    <div class="max-w-7xl mx-auto px-4 flex items-center gap-3">
+      <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-3xl shadow-inner">🔒</div>
+      <div>
+        <h1 class="text-2xl font-bold tracking-tight">Huachipato</h1>
+        <p class="text-[#00A3E0] text-base -mt-1">Servicio de Seguridad</p>
+      </div>
+    </div>
+  </header>
+
+  <div class="max-w-7xl mx-auto px-4 py-6">
+    <h2 class="text-3xl font-bold text-center mb-3">Funciones por Puesto</h2>
+    <p class="text-center text-base text-slate-400 mb-8">Selecciona tu puesto</p>
+
+    <!-- GRID DE PUESTOS -->
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4" id="puestos-grid">
+      <!-- Se generan automáticamente -->
+    </div>
+  </div>
+
+  <!-- MODAL -->
+  <div id="modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+    <div class="modal bg-slate-900 rounded-2xl max-w-xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+      
+      <!-- Modal Header -->
+      <div class="bg-[#003087] px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <span id="modal-icon" class="text-4xl"></span>
+          <h3 id="modal-title" class="text-2xl font-bold"></h3>
+        </div>
+        <button onclick="cerrarModal()" class="text-white text-4xl leading-none hover:text-[#00A3E0]">×</button>
+      </div>
+
+      <!-- Contenido -->
+      <div class="flex-1 overflow-y-auto p-6 text-base leading-relaxed" id="modal-content">
+        <!-- Funciones aquí -->
+      </div>
+
+      <!-- Footer (solo botón Cerrar) -->
+      <div class="p-4 border-t border-slate-700">
+        <button onclick="cerrarModal()" 
+                class="w-full bg-[#00A3E0] hover:bg-[#00BFFF] text-black font-bold py-3 rounded-xl text-xl">
+          CERRAR
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const puestos = [
+      { id: 1, nombre: "Coordinador (Jefe Grupo)", icon: "👥" },
+      { id: 2, nombre: "Guardia Perímetro (Guardia Conductor)", icon: "🚗" },
+      { id: 3, nombre: "Administrativa Recepción", icon: "📞" },
+      { id: 4, nombre: "Entrada / Salida Bio Bío", icon: "🚪" },
+      { id: 5, nombre: "Operador CCTV", icon: "📹" },
+      { id: 6, nombre: "Acceso Algarrobo", icon: "🚧" },
+      { id: 7, nombre: "Guardia Acceso Algarrobo 2", icon: "🚧" },
+      { id: 8, nombre: "Operador de Dron", icon: "🚁" }, // Cambiado a dron, pero emoji es similar; ajusta si hay mejor
+      { id: 9, nombre: "Guardia de Muelle", icon: "⚓" },
+      { id: 10, nombre: "Guardia Acceso San Vicente", icon: "🚧" }
+    ];
+
+    const funciones = {
+      1: ["Apoyar a supervisión y jefe de turno UPI en tareas de seguridad","Ejecutar controles de velocidad vehicular con pistola radar","Cargar combustible a vehículo de bomberos","Realizar rondas generales para detectar riesgos","Coordinar relevos en posiciones estratégicas","Distribuir insumos a puestos de vigilancia","Cerrar vías internas temporalmente cuando sea requerido","Apoyar en inspecciones, escoltas y controles aleatorios","Lavar y limpiar vehículos asignados en turno nocturno","Apoyar control de acceso en torniquetes durante ingreso matutino","Participar en rescates y contingencias de emergencia","Trasladar personal de seguridad internamente cuando sea necesario","Registrar incidentes en plataforma VISION con evidencias"],
+      2: ["Aplicar Plan de Patrullaje Integrado","Apoyar controles de velocidad vehicular","Apoyar carga de combustible a vehículo de bomberos","Realizar rondas generales para verificar seguridad","Apoyar relevos en posiciones estratégicas","Distribuir insumos a puestos de vigilancia","Apoyar cierre de vías internas","Apoyar charlas preventivas","Colaborar en inspecciones, escoltas y controles","Apoyar control de acceso en torniquetes","Participar en rescates y contingencias","Trasladar personal de seguridad internamente","Registrar incidentes en VISION con evidencias","Lavar vehículos en turno nocturno"],
+      3: ["Gestionar accesos y visitas, registrando proveedores y visitas","Verificar uso correcto de EPP","Gestionar tarjetas de acceso: desactivar, activar y aprobar","Presentar video de inducción para nuevos ingresos","Controlar asistencia a inducciones transversales","Confeccionar credenciales con fotos y datos en sistema","Elaborar informes diarios y mensuales de accesos","Gestionar documentación: valijas, correos, llamadas y notificaciones","Administrar TAG vehiculares y reemplazo de tarjetas","Usar PDA para validación y registro de ingresos/salidas"],
+      4: ["Controlar salida de materiales con guías autorizadas","Fiscalizar camiones proveedores e internos: documentación y condiciones","Usar plataformas como M.E.S., PGV y SAC para validación","Revisar guías y eliminar registros de visitantes al salir","Supervisar revisión física de materiales","Apoyar en contingencias de acceso durante aglomeraciones","Gestionar relevos operativos en turno diurno para cobertura continua"],
+      5: ["Monitorear cámaras en tiempo real para detectar anomalías","Proporcionar apoyo visual a patrulleros","Cubrir zonas sin acceso aéreo en reemplazo de dron","Identificar situaciones sospechosas y activar alertas","Informar inmediatamente a supervisión y UPI","Revisar grabaciones y elaborar informes","Registrar incidentes en libro o plataforma","Realizar entrega de turno clara","Coordinar colación con operador de dron para continuidad"],
+      6: ["Abrir/cerrar portones para vehículos de carga de forma segura","Revisar registros en plataformas M.E.S., PGV y SAC","Supervisar ingreso de camiones con carga: documentación y condiciones","Verificar guías de despacho y estado del vehículo","Controlar salida con guías firmadas","Reportar inconsistencias documentales","Cerrar portón al fin de turno y entregar documentación a UPI","Mantener listado de empresas y productos retirados"],
+      7: ["Abrir/cerrar portones para vehículos de carga de forma segura","Controlar ingreso: registrar nombre, RUT, empresa, patente y hora","Controlar salida: verificar y registrar hora, asegurar no queden personas dentro"],
+      8: ["Aplicar Plan de Patrullaje Integrado","Realizar rondas perimetrales aéreas programadas","Apoyar visualmente en emergencias con imágenes en tiempo real","Supervisar zonas críticas para prevención de riesgos","Colaborar con CCTV y supervisión para cobertura completa","Apoyar CCTV durante colación del operador","Atender requerimientos de Versión Víctor 6 a solicitud del cliente","Apoyar operación terrestre si dron no opera por condiciones adversas","No compartir información reservada sin autorización"],
+      9: ["Conocer Código ISPS, funciones OPIP y niveles de protección","Controlar acceso al muelle de personas y vehículos","Verificar identificación y autorización de ingresos","Confirmar autorizaciones en SAC y PDA","Mantener comunicación con jefe de turno muelle y UPI para reportes"," Mantener espejo de agua permenentemente sin botes menores, registrar estas novedades y avisar a jefe de turno"],
+      10: ["Conocer Código ISPS, funciones OPIP y niveles de protección","Supervisar acceso vehicular y personal con autorización formal","Emitir pases de ingreso con datos detallados","Controlar materiales transportados con guías","Fiscalizar egresos con guías de salida","Gestionar ingreso de cargas peligrosas con formulario especial","Controlar acceso de autoridades durante atraque de buques","Verificar identidad y acreditación con PDA y SAC","Inspeccionar con paleta detectora de metales","Registrar novedades en libro","Mantener comunicación con jefe de turno muelle y UPI"]
+    };
+
+    // Generar tarjetas
+    const grid = document.getElementById('puestos-grid');
+    puestos.forEach(p => {
+      const div = document.createElement('div');
+      div.className = `card-hover bg-slate-900 rounded-2xl p-4 text-center cursor-pointer border border-slate-700`;
+      div.innerHTML = `
+        <div class="text-5xl mb-4">${p.icon}</div>
+        <h3 class="text-xl font-bold">${p.nombre}</h3>
+        <p class="text-slate-400 mt-1 text-xs">Toca para ver funciones</p>
+      `;
+      div.onclick = () => abrirModal(p.id, p.nombre, p.icon);
+      grid.appendChild(div);
+    });
+
+    function abrirModal(id, nombre, icon) {
+      document.getElementById('modal-icon').innerHTML = icon;
+      document.getElementById('modal-title').innerHTML = nombre;
+      
+      let html = '<ul class="space-y-4">';
+      funciones[id].forEach(f => {
+        html += `<li class="flex gap-3"><span class="text-[#00A3E0] text-2xl mt-1">•</span><span>${f}</span></li>`;
+      });
+      html += '</ul>';
+      document.getElementById('modal-content').innerHTML = html;
+      
+      document.getElementById('modal').classList.remove('hidden');
+      document.getElementById('modal').classList.add('flex');
+    }
+
+    function cerrarModal() {
+      const modal = document.getElementById('modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    // Cerrar con tecla Escape
+    document.addEventListener('keydown', e => { if (e.key === "Escape") cerrarModal(); });
+  </script>
+</body>
+</html>
