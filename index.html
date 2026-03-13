@@ -1,142 +1,368 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
-  <!-- === CONFIGURACIÓN PARA VERSE COMO APLICACIÓN === -->
-  <meta name="theme-color" content="#003087">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="mobile-web-app-capable" content="yes">
-  
-  <title>Huachipato • Funciones por Puesto</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
-  
-  <style>
-    body { font-family: system-ui, sans-serif; }
-    .card-hover { transition: all 0.3s; }
-    .card-hover:hover { transform: translateY(-8px); box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.3); }
-    .modal { animation: modalPop 0.3s ease-out; }
-    @keyframes modalPop { from { opacity: 0; transform: scale(0.85); } to { opacity: 1; transform: scale(1); } }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Huachipato - Registro Cloud</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, addDoc, onSnapshot, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        // Configuración proporcionada por el entorno
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'huachipato-app';
+
+        // Variables Globales
+        window.db = db;
+        window.appId = appId;
+        window.currentSessionId = new URLSearchParams(window.location.search).get('session');
+
+        // Autenticación Anónima para permitir Firestore
+        signInAnonymously(auth).catch(err => console.error("Error Auth:", err));
+
+        window.onload = () => {
+            if (window.currentSessionId) {
+                // Modo Participante: El usuario abrió un link compartido
+                showStep('participant-view');
+                loadSessionData(window.currentSessionId);
+            } else {
+                // Modo Relator: Crear nueva sesión
+                showStep('step-1');
+            }
+        };
+    </script>
+
+    <style>
+        :root { --safe-area-inset-bottom: env(safe-area-inset-bottom); }
+        body { font-family: system-ui, -apple-system, sans-serif; background-color: #f8fafc; }
+        .app-container { max-width: 500px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
+        .card { background: white; border-radius: 16px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 1.5rem; }
+        .input-group label { font-weight: 600; font-size: 0.85rem; color: #475569; display: block; margin-bottom: 0.25rem; }
+        .input-group input, .input-group select, .input-group textarea {
+            width: 100%; padding: 0.75rem; border-radius: 10px; border: 1px solid #d1d5db; font-size: 16px;
+        }
+        .btn-primary { background: #1e3a8a; color: white; font-weight: 700; text-align: center; padding: 1rem; border-radius: 12px; width: 100%; cursor: pointer; }
+        .canvas-container { width: 100%; height: 180px; background: #fff; border: 2px solid #cbd5e1; border-radius: 12px; touch-action: none; }
+        .hidden { display: none; }
+    </style>
 </head>
-<body class="bg-slate-950 text-white min-h-screen">
+<body>
 
-  <!-- HEADER -->
-  <header class="bg-[#003087] py-4 shadow-lg">
-    <div class="max-w-7xl mx-auto px-4 flex items-center gap-3">
-      <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-3xl shadow-inner">🔒</div>
-      <div>
-        <h1 class="text-2xl font-bold tracking-tight">Huachipato</h1>
-        <p class="text-[#00A3E0] text-base -mt-1">Servicio de Seguridad</p>
-      </div>
+    <div class="app-container">
+        <header class="bg-white px-6 py-4 flex items-center justify-between border-b sticky top-0 z-50">
+            <div class="flex items-center gap-3">
+                <img src="https://res.cloudinary.com/dway4iqeh/image/upload/v1773364564/OIP_ngwuax.jpg" alt="Logo" class="h-10 w-auto rounded border" crossorigin="anonymous">
+                <div>
+                    <h1 class="text-sm font-black text-blue-900 leading-tight uppercase">Huachipato S.A.</h1>
+                    <p class="text-[10px] text-gray-500 font-bold">Registro de Seguridad</p>
+                </div>
+            </div>
+            <div id="status-badge" class="text-[9px] bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-bold">RELATOR</div>
+        </header>
+
+        <main class="p-6 pb-32">
+            
+            <!-- VISTA 1: RELATOR - CREAR SESIÓN -->
+            <div id="step-1" class="step-pane">
+                <h2 class="text-xl font-black text-gray-800 mb-4">Configurar Capacitación</h2>
+                <div class="card space-y-4">
+                    <div class="input-group"><label>Tema</label><input type="text" id="ses-tema" placeholder="Ej: Bloqueo de Energías"></div>
+                    <div class="input-group"><label>Relator</label><input type="text" id="rel-nombre" placeholder="Nombre completo"></div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="input-group"><label>Fecha</label><input type="date" id="ses-fecha"></div>
+                        <div class="input-group"><label>Hora</label><input type="time" id="ses-hora"></div>
+                    </div>
+                    <div class="input-group"><label>Lugar</label><input type="text" id="ses-lugar" placeholder="Planta Talcahuano"></div>
+                    <button onclick="crearSesionCloud()" class="btn-primary mt-4">Generar Enlace para Firmas</button>
+                </div>
+            </div>
+
+            <!-- VISTA 2: RELATOR - MONITOREO Y CIERRE -->
+            <div id="step-monitor" class="step-pane hidden">
+                <div class="card bg-blue-900 text-white">
+                    <h3 class="font-bold mb-2">Enlace de Firma Compartido</h3>
+                    <p class="text-xs text-blue-200 mb-4">Envía este link a los trabajadores para que firmen desde sus celulares:</p>
+                    <div class="flex gap-2">
+                        <input type="text" id="share-url" readonly class="flex-1 bg-blue-800 border-none text-[10px] p-2 rounded text-white">
+                        <button onclick="copiarLink()" class="bg-white text-blue-900 px-3 py-1 rounded text-xs font-bold">Copiar</button>
+                    </div>
+                </div>
+
+                <h3 class="text-lg font-bold text-gray-800 mb-3 flex justify-between">
+                    Firmas Recibidas 
+                    <span id="counter-cloud" class="bg-blue-600 text-white text-xs px-2 py-1 rounded">0</span>
+                </h3>
+                <div id="participantes-cloud-list" class="space-y-3 mb-6">
+                    <!-- Lista de personas que van firmando -->
+                </div>
+
+                <button onclick="generarInformeFinal()" class="btn-primary">Finalizar y Descargar Informe PDF</button>
+            </div>
+
+            <!-- VISTA 3: PARTICIPANTE - LLENAR Y FIRMAR -->
+            <div id="participant-view" class="step-pane hidden">
+                <div id="ses-info-p" class="mb-4 text-center">
+                    <h2 id="p-ses-tema" class="text-xl font-black text-blue-900">...</h2>
+                    <p id="p-ses-relator" class="text-sm text-gray-500 font-medium">Relator: ...</p>
+                </div>
+
+                <div class="card space-y-4">
+                    <div class="input-group"><label>Mi Nombre Completo</label><input type="text" id="p-nombre"></div>
+                    <div class="input-group"><label>RUT</label><input type="text" id="p-rut" placeholder="12.345.678-9"></div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="input-group"><label>Cargo</label><input type="text" id="p-cargo"></div>
+                        <div class="input-group">
+                            <label>Perfil</label>
+                            <select id="p-perfil">
+                                <option>Trabajador</option>
+                                <option>Comité Paritario</option>
+                                <option>Sindicato</option>
+                                <option>Gerencia</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Firme en el recuadro</label>
+                        <div class="canvas-container"><canvas id="p-canvas"></canvas></div>
+                        <button onclick="window.padParticipante.clear()" class="text-[10px] text-red-500 font-bold uppercase">Limpiar</button>
+                    </div>
+                    <button id="btn-enviar-firma" onclick="enviarFirmaParticipante()" class="btn-primary">Enviar Mi Firma</button>
+                </div>
+            </div>
+
+            <!-- PANTALLA ÉXITO -->
+            <div id="step-success" class="step-pane hidden text-center py-20">
+                <div class="bg-green-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <svg class="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                </div>
+                <h2 class="text-2xl font-black text-gray-800 mb-2">¡Firma Enviada!</h2>
+                <p class="text-gray-500 text-sm">Gracias. Tu registro ha sido procesado exitosamente por el sistema de Huachipato.</p>
+            </div>
+
+        </main>
     </div>
-  </header>
 
-  <div class="max-w-7xl mx-auto px-4 py-6">
-    <h2 class="text-3xl font-bold text-center mb-3">Funciones por Puesto</h2>
-    <p class="text-center text-base text-slate-400 mb-8">Selecciona tu puesto</p>
+    <script>
+        // Lógica de UI
+        function showStep(id) {
+            document.querySelectorAll('.step-pane').forEach(el => el.classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+            if(id === 'participant-view') {
+                document.getElementById('status-badge').innerText = "PARTICIPANTE";
+                document.getElementById('status-badge').className = "text-[9px] bg-green-100 text-green-700 px-2 py-1 rounded-full font-bold";
+                initParticipantPad();
+            }
+        }
 
-    <!-- GRID DE PUESTOS -->
-    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4" id="puestos-grid">
-      <!-- Se generan automáticamente -->
-    </div>
-  </div>
+        // --- LÓGICA DEL RELATOR ---
+        async function crearSesionCloud() {
+            const tema = document.getElementById('ses-tema').value;
+            const relator = document.getElementById('rel-nombre').value;
+            if(!tema || !relator) { alert("Complete tema y relator"); return; }
 
-  <!-- MODAL -->
-  <div id="modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-    <div class="modal bg-slate-900 rounded-2xl max-w-xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-      
-      <!-- Modal Header -->
-      <div class="bg-[#003087] px-6 py-4 flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <span id="modal-icon" class="text-4xl"></span>
-          <h3 id="modal-title" class="text-2xl font-bold"></h3>
-        </div>
-        <button onclick="cerrarModal()" class="text-white text-4xl leading-none hover:text-[#00A3E0]">×</button>
-      </div>
+            const sesData = {
+                tema: tema,
+                relator: relator,
+                fecha: document.getElementById('ses-fecha').value,
+                hora: document.getElementById('ses-hora').value,
+                lugar: document.getElementById('ses-lugar').value,
+                createdAt: new Date()
+            };
 
-      <!-- Contenido -->
-      <div class="flex-1 overflow-y-auto p-6 text-base leading-relaxed" id="modal-content">
-        <!-- Funciones aquí -->
-      </div>
+            try {
+                // Guardar sesión en Firestore
+                const docRef = await addDoc(collection(window.db, 'artifacts', window.appId, 'public', 'data', 'sesiones'), sesData);
+                window.currentSessionId = docRef.id;
+                
+                // Generar URL para compartir (apunta a la misma página con el ID de sesión)
+                const shareUrl = `${window.location.origin}${window.location.pathname}?session=${docRef.id}`;
+                document.getElementById('share-url').value = shareUrl;
+                
+                showStep('step-monitor');
+                escucharFirmas(docRef.id);
+            } catch (e) {
+                alert("Error al crear sesión en la nube.");
+            }
+        }
 
-      <!-- Footer (solo botón Cerrar) -->
-      <div class="p-4 border-t border-slate-700">
-        <button onclick="cerrarModal()" 
-                class="w-full bg-[#00A3E0] hover:bg-[#00BFFF] text-black font-bold py-3 rounded-xl text-xl">
-          CERRAR
-        </button>
-      </div>
-    </div>
-  </div>
+        function escucharFirmas(sessionId) {
+            const q = query(collection(window.db, 'artifacts', window.appId, 'public', 'data', 'firmas'), where("sessionId", "==", sessionId));
+            onSnapshot(q, (snapshot) => {
+                const list = document.getElementById('participantes-cloud-list');
+                const counter = document.getElementById('counter-cloud');
+                list.innerHTML = "";
+                counter.innerText = snapshot.size;
+                window.firmasRecolectadas = [];
 
-  <script>
-    const puestos = [
-      { id: 1, nombre: "Coordinador (Jefe Grupo)", icon: "👥" },
-      { id: 2, nombre: "Guardia Perímetro (Guardia Conductor)", icon: "🚗" },
-      { id: 3, nombre: "Administrativa Recepción", icon: "📞" },
-      { id: 4, nombre: "Entrada / Salida Bio Bío", icon: "🚪" },
-      { id: 5, nombre: "Operador CCTV", icon: "📹" },
-      { id: 6, nombre: "Acceso Algarrobo", icon: "🚧" },
-      { id: 7, nombre: "Guardia Acceso Algarrobo 2", icon: "🚧" },
-      { id: 8, nombre: "Operador de Dron", icon: "🚁" }, // Cambiado a dron, pero emoji es similar; ajusta si hay mejor
-      { id: 9, nombre: "Guardia de Muelle", icon: "⚓" },
-      { id: 10, nombre: "Guardia Acceso San Vicente", icon: "🚧" }
-    ];
+                snapshot.forEach((doc) => {
+                    const f = doc.data();
+                    window.firmasRecolectadas.push(f);
+                    const item = document.createElement('div');
+                    item.className = "flex items-center justify-between bg-white p-3 rounded-xl border border-blue-50 shadow-sm";
+                    item.innerHTML = `
+                        <div>
+                            <p class="text-sm font-bold text-gray-800">${f.nombre}</p>
+                            <p class="text-[10px] text-gray-400 uppercase">${f.cargo} - ${f.perfil}</p>
+                        </div>
+                        <div class="text-green-500">
+                             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"></path></svg>
+                        </div>
+                    `;
+                    list.appendChild(item);
+                });
+            });
+        }
 
-    const funciones = {
-      1: ["Apoyar a supervisión y jefe de turno UPI en tareas de seguridad","Ejecutar controles de velocidad vehicular con pistola radar","Cargar combustible a vehículo de bomberos","Realizar rondas generales para detectar riesgos","Coordinar relevos en posiciones estratégicas","Distribuir insumos a puestos de vigilancia","Cerrar vías internas temporalmente cuando sea requerido","Apoyar en inspecciones, escoltas y controles aleatorios","Lavar y limpiar vehículos asignados en turno nocturno","Apoyar control de acceso en torniquetes durante ingreso matutino","Participar en rescates y contingencias de emergencia","Trasladar personal de seguridad internamente cuando sea necesario","Registrar incidentes en plataforma VISION con evidencias"],
-      2: ["Aplicar Plan de Patrullaje Integrado","Apoyar controles de velocidad vehicular","Apoyar carga de combustible a vehículo de bomberos","Realizar rondas generales para verificar seguridad","Apoyar relevos en posiciones estratégicas","Distribuir insumos a puestos de vigilancia","Apoyar cierre de vías internas","Apoyar charlas preventivas","Colaborar en inspecciones, escoltas y controles","Apoyar control de acceso en torniquetes","Participar en rescates y contingencias","Trasladar personal de seguridad internamente","Registrar incidentes en VISION con evidencias","Lavar vehículos en turno nocturno"],
-      3: ["Gestionar accesos y visitas, registrando proveedores y visitas","Verificar uso correcto de EPP","Gestionar tarjetas de acceso: desactivar, activar y aprobar","Presentar video de inducción para nuevos ingresos","Controlar asistencia a inducciones transversales","Confeccionar credenciales con fotos y datos en sistema","Elaborar informes diarios y mensuales de accesos","Gestionar documentación: valijas, correos, llamadas y notificaciones","Administrar TAG vehiculares y reemplazo de tarjetas","Usar PDA para validación y registro de ingresos/salidas"],
-      4: ["Controlar salida de materiales con guías autorizadas","Fiscalizar camiones proveedores e internos: documentación y condiciones","Usar plataformas como M.E.S., PGV y SAC para validación","Revisar guías y eliminar registros de visitantes al salir","Supervisar revisión física de materiales","Apoyar en contingencias de acceso durante aglomeraciones","Gestionar relevos operativos en turno diurno para cobertura continua"],
-      5: ["Monitorear cámaras en tiempo real para detectar anomalías","Proporcionar apoyo visual a patrulleros","Cubrir zonas sin acceso aéreo en reemplazo de dron","Identificar situaciones sospechosas y activar alertas","Informar inmediatamente a supervisión y UPI","Revisar grabaciones y elaborar informes","Registrar incidentes en libro o plataforma","Realizar entrega de turno clara","Coordinar colación con operador de dron para continuidad"],
-      6: ["Abrir/cerrar portones para vehículos de carga de forma segura","Revisar registros en plataformas M.E.S., PGV y SAC","Supervisar ingreso de camiones con carga: documentación y condiciones","Verificar guías de despacho y estado del vehículo","Controlar salida con guías firmadas","Reportar inconsistencias documentales","Cerrar portón al fin de turno y entregar documentación a UPI","Mantener listado de empresas y productos retirados"],
-      7: ["Abrir/cerrar portones para vehículos de carga de forma segura","Controlar ingreso: registrar nombre, RUT, empresa, patente y hora","Controlar salida: verificar y registrar hora, asegurar no queden personas dentro"],
-      8: ["Aplicar Plan de Patrullaje Integrado","Realizar rondas perimetrales aéreas programadas","Apoyar visualmente en emergencias con imágenes en tiempo real","Supervisar zonas críticas para prevención de riesgos","Colaborar con CCTV y supervisión para cobertura completa","Apoyar CCTV durante colación del operador","Atender requerimientos de Versión Víctor 6 a solicitud del cliente","Apoyar operación terrestre si dron no opera por condiciones adversas","No compartir información reservada sin autorización"],
-      9: ["Conocer Código ISPS, funciones OPIP y niveles de protección","Controlar acceso al muelle de personas y vehículos","Verificar identificación y autorización de ingresos","Confirmar autorizaciones en SAC y PDA","Mantener comunicación con jefe de turno muelle y UPI para reportes"," Mantener espejo de agua permenentemente sin botes menores, registrar estas novedades y avisar a jefe de turno"],
-      10: ["Conocer Código ISPS, funciones OPIP y niveles de protección","Supervisar acceso vehicular y personal con autorización formal","Emitir pases de ingreso con datos detallados","Controlar materiales transportados con guías","Fiscalizar egresos con guías de salida","Gestionar ingreso de cargas peligrosas con formulario especial","Controlar acceso de autoridades durante atraque de buques","Verificar identidad y acreditación con PDA y SAC","Inspeccionar con paleta detectora de metales","Registrar novedades en libro","Mantener comunicación con jefe de turno muelle y UPI"]
-    };
+        function copiarLink() {
+            const copyText = document.getElementById("share-url");
+            copyText.select();
+            document.execCommand("copy");
+            alert("Enlace copiado. Pégalo en WhatsApp o Correo.");
+        }
 
-    // Generar tarjetas
-    const grid = document.getElementById('puestos-grid');
-    puestos.forEach(p => {
-      const div = document.createElement('div');
-      div.className = `card-hover bg-slate-900 rounded-2xl p-4 text-center cursor-pointer border border-slate-700`;
-      div.innerHTML = `
-        <div class="text-5xl mb-4">${p.icon}</div>
-        <h3 class="text-xl font-bold">${p.nombre}</h3>
-        <p class="text-slate-400 mt-1 text-xs">Toca para ver funciones</p>
-      `;
-      div.onclick = () => abrirModal(p.id, p.nombre, p.icon);
-      grid.appendChild(div);
-    });
+        // --- LÓGICA DEL PARTICIPANTE ---
+        async function loadSessionData(id) {
+            const docRef = doc(window.db, 'artifacts', window.appId, 'public', 'data', 'sesiones', id);
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                window.sessionData = data;
+                document.getElementById('p-ses-tema').innerText = data.tema;
+                document.getElementById('p-ses-relator').innerText = `Relator: ${data.relator}`;
+            } else {
+                alert("Enlace de capacitación inválido o expirado.");
+            }
+        }
 
-    function abrirModal(id, nombre, icon) {
-      document.getElementById('modal-icon').innerHTML = icon;
-      document.getElementById('modal-title').innerHTML = nombre;
-      
-      let html = '<ul class="space-y-4">';
-      funciones[id].forEach(f => {
-        html += `<li class="flex gap-3"><span class="text-[#00A3E0] text-2xl mt-1">•</span><span>${f}</span></li>`;
-      });
-      html += '</ul>';
-      document.getElementById('modal-content').innerHTML = html;
-      
-      document.getElementById('modal').classList.remove('hidden');
-      document.getElementById('modal').classList.add('flex');
-    }
+        async function enviarFirmaParticipante() {
+            const btn = document.getElementById('btn-enviar-firma');
+            const nombre = document.getElementById('p-nombre').value;
+            const firmaImg = window.padParticipante.getData();
 
-    function cerrarModal() {
-      const modal = document.getElementById('modal');
-      modal.classList.add('hidden');
-      modal.classList.remove('flex');
-    }
+            if(!nombre || !firmaImg) { alert("Completa tus datos y firma"); return; }
+            
+            btn.disabled = true;
+            btn.innerText = "Enviando...";
 
-    // Cerrar con tecla Escape
-    document.addEventListener('keydown', e => { if (e.key === "Escape") cerrarModal(); });
-  </script>
+            const firmaData = {
+                sessionId: window.currentSessionId,
+                nombre: nombre,
+                rut: document.getElementById('p-rut').value,
+                cargo: document.getElementById('p-cargo').value,
+                perfil: document.getElementById('p-perfil').value,
+                firma: firmaImg,
+                timestamp: new Date()
+            };
+
+            try {
+                await addDoc(collection(window.db, 'artifacts', window.appId, 'public', 'data', 'firmas'), firmaData);
+                showStep('step-success');
+            } catch (e) {
+                alert("Error al enviar firma.");
+                btn.disabled = false;
+                btn.innerText = "Enviar Mi Firma";
+            }
+        }
+
+        // --- MANEJO DE CANVAS ---
+        class SignaturePad {
+            constructor(canvasId) {
+                this.canvas = document.getElementById(canvasId);
+                this.ctx = this.canvas.getContext('2d');
+                this.drawing = false;
+                this.hasContent = false;
+                this.init();
+            }
+            init() {
+                const rect = this.canvas.parentElement.getBoundingClientRect();
+                this.canvas.width = rect.width;
+                this.canvas.height = rect.height;
+                this.ctx.lineWidth = 2.5;
+                this.ctx.strokeStyle = "#000";
+                this.ctx.lineCap = "round";
+                const start = (e) => { this.drawing = true; this.hasContent = true; this.ctx.beginPath(); this.move(e); };
+                const move = (e) => { if(!this.drawing) return; this.move(e); this.ctx.stroke(); };
+                const end = () => { this.drawing = false; };
+                this.canvas.addEventListener('touchstart', (e) => { e.preventDefault(); start(e.touches[0]); }, {passive:false});
+                this.canvas.addEventListener('touchmove', (e) => { e.preventDefault(); move(e.touches[0]); }, {passive:false});
+                this.canvas.addEventListener('touchend', end);
+                this.canvas.addEventListener('mousedown', start);
+                this.canvas.addEventListener('mousemove', move);
+            }
+            move(e) {
+                const r = this.canvas.getBoundingClientRect();
+                this.ctx.lineTo(e.clientX - r.left, e.clientY - r.top);
+            }
+            clear() { this.ctx.clearRect(0,0,this.canvas.width,this.canvas.height); this.hasContent = false; }
+            getData() { return this.hasContent ? this.canvas.toDataURL() : null; }
+        }
+
+        function initParticipantPad() {
+            setTimeout(() => {
+                window.padParticipante = new SignaturePad('p-canvas');
+            }, 500);
+        }
+
+        // --- INFORME FINAL ---
+        function generarInformeFinal() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const pageWidth = doc.internal.pageSize.width;
+            
+            // Header
+            doc.setFillColor(30, 58, 138);
+            doc.rect(0, 0, pageWidth, 25, 'F');
+            doc.setTextColor(255);
+            doc.setFontSize(14);
+            doc.text("COMPAÑÍA SIDERÚRGICA HUACHIPATO S.A.", 15, 15);
+            
+            doc.setTextColor(0);
+            doc.setFontSize(14);
+            doc.text("REGISTRO DE CAPACITACIÓN CLOUD", pageWidth/2, 40, {align:'center'});
+
+            const ses = document.getElementById('step-1'); // O de la sesión activa
+            const info = [
+                ['Relator:', document.getElementById('rel-nombre').value, 'Fecha:', document.getElementById('ses-fecha').value],
+                ['Tema:', {content: document.getElementById('ses-tema').value, colSpan: 3}]
+            ];
+
+            doc.autoTable({
+                startY: 50,
+                body: info,
+                theme: 'grid'
+            });
+
+            const pRows = window.firmasRecolectadas.map((f, i) => [
+                i+1, f.nombre, f.rut, f.cargo, f.perfil, ""
+            ]);
+
+            doc.autoTable({
+                startY: doc.lastAutoTable.finalY + 10,
+                head: [["N°", "Nombre", "RUT", "Cargo", "Perfil", "Firma"]],
+                body: pRows,
+                styles: { minCellHeight: 15, fontSize: 8, valign: 'middle' },
+                didDrawCell: function(data) {
+                    if (data.column.index === 5 && data.cell.section === 'body') {
+                        const img = window.firmasRecolectadas[data.row.index].firma;
+                        if(img) doc.addImage(img, 'PNG', data.cell.x + 2, data.cell.y + 2, data.cell.width - 4, data.cell.height - 4);
+                    }
+                }
+            });
+
+            doc.save("Reporte_Huachipato_Firmas_Cloud.pdf");
+        }
+    </script>
 </body>
 </html>
