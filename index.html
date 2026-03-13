@@ -5,278 +5,193 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Huachipato - Registro Cloud</title>
+    <title>PPRR - Registro App</title>
     
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- jsPDF y AutoTable -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 
-    <!-- Firebase SDK -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, doc, setDoc, getDoc, collection, addDoc, onSnapshot, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-
-        // Configuración proporcionada por el entorno
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'huachipato-app';
-
-        // Variables Globales
-        window.db = db;
-        window.appId = appId;
-        window.currentSessionId = new URLSearchParams(window.location.search).get('session');
-
-        // Autenticación Anónima para permitir Firestore
-        signInAnonymously(auth).catch(err => console.error("Error Auth:", err));
-
-        window.onload = () => {
-            if (window.currentSessionId) {
-                // Modo Participante: El usuario abrió un link compartido
-                showStep('participant-view');
-                loadSessionData(window.currentSessionId);
-            } else {
-                // Modo Relator: Crear nueva sesión
-                showStep('step-1');
-            }
-        };
-    </script>
-
     <style>
-        :root { --safe-area-inset-bottom: env(safe-area-inset-bottom); }
-        body { font-family: system-ui, -apple-system, sans-serif; background-color: #f8fafc; }
-        .app-container { max-width: 500px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
-        .card { background: white; border-radius: 16px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 1.5rem; }
-        .input-group label { font-weight: 600; font-size: 0.85rem; color: #475569; display: block; margin-bottom: 0.25rem; }
-        .input-group input, .input-group select, .input-group textarea {
-            width: 100%; padding: 0.75rem; border-radius: 10px; border: 1px solid #d1d5db; font-size: 16px;
+        :root {
+            --safe-area-inset-top: env(safe-area-inset-top);
+            --safe-area-inset-bottom: env(safe-area-inset-bottom);
         }
-        .btn-primary { background: #1e3a8a; color: white; font-weight: 700; text-align: center; padding: 1rem; border-radius: 12px; width: 100%; cursor: pointer; }
-        .canvas-container { width: 100%; height: 180px; background: #fff; border: 2px solid #cbd5e1; border-radius: 12px; touch-action: none; }
-        .hidden { display: none; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f8fafc;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+        .app-container {
+            max-width: 500px;
+            margin: 0 auto;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .step-content {
+            flex: 1;
+            padding: 1.5rem;
+            padding-bottom: 120px;
+        }
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            padding: 1rem 1.5rem calc(1rem + var(--safe-area-inset-bottom));
+            border-top: 1px solid #e2e8f0;
+            box-shadow: 0 -4px 6px -1px rgb(0 0 0 / 0.1);
+            max-width: 500px;
+            margin: 0 auto;
+            z-index: 100;
+        }
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            height: 200px;
+            background: #fff;
+            border: 2px solid #cbd5e1;
+            border-radius: 12px;
+            touch-action: none;
+        }
+        canvas { touch-action: none; width: 100%; height: 100%; border-radius: 12px; }
+        .input-group label { font-weight: 600; font-size: 0.85rem; color: #475569; margin-bottom: 0.25rem; display: block; }
+        .input-group input, .input-group select, .input-group textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 10px;
+            border: 1px solid #d1d5db;
+            background: white;
+            appearance: none;
+        }
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 1.25rem;
+            box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+            margin-bottom: 1.5rem;
+        }
+        .btn-primary {
+            background: #1e3a8a;
+            color: white;
+            font-weight: 700;
+            text-align: center;
+            padding: 1rem;
+            border-radius: 12px;
+            width: 100%;
+            display: block;
+            transition: transform 0.1s;
+        }
+        .btn-primary:active { transform: scale(0.98); background: #172554; }
+        .required::after { content: " *"; color: #ef4444; }
     </style>
 </head>
 <body>
 
     <div class="app-container">
+        <!-- HEADER APP -->
         <header class="bg-white px-6 py-4 flex items-center justify-between border-b sticky top-0 z-50">
             <div class="flex items-center gap-3">
-                <img src="https://res.cloudinary.com/dway4iqeh/image/upload/v1773364564/OIP_ngwuax.jpg" alt="Logo" class="h-10 w-auto rounded border" crossorigin="anonymous">
+                <img id="logo-empresa" src="https://res.cloudinary.com/dway4iqeh/image/upload/v1769518146/logosecuritas_kixenx.png" alt="Logo" class="h-10 w-auto rounded border" crossorigin="anonymous">
                 <div>
-                    <h1 class="text-sm font-black text-blue-900 leading-tight uppercase">Huachipato S.A.</h1>
-                    <p class="text-[10px] text-gray-500 font-bold">Registro de Seguridad</p>
+                    <h1 class="text-sm font-black text-blue-900 leading-tight">CAPACITACIÓN</h1>
+                    <p class="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">Securitas / Planta Huachipato</p>
                 </div>
             </div>
-            <div id="status-badge" class="text-[9px] bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-bold">RELATOR</div>
+            <div class="text-[10px] text-right text-gray-400">
+                <br>v2.0 Mobile
+            </div>
         </header>
 
-        <main class="p-6 pb-32">
-            
-            <!-- VISTA 1: RELATOR - CREAR SESIÓN -->
+        <!-- PROGRESS BAR -->
+        <div class="bg-gray-200 h-1 w-full">
+            <div id="progress-bar" class="bg-blue-600 h-1 transition-all duration-500" style="width: 33%"></div>
+        </div>
+
+        <main class="step-content">
+            <!-- PASO 1: SESIÓN -->
             <div id="step-1" class="step-pane">
-                <h2 class="text-xl font-black text-gray-800 mb-4">Configurar Capacitación</h2>
-                <div class="card space-y-4">
-                    <div class="input-group"><label>Tema</label><input type="text" id="ses-tema" placeholder="Ej: Bloqueo de Energías"></div>
-                    <div class="input-group"><label>Relator</label><input type="text" id="rel-nombre" placeholder="Nombre completo"></div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="input-group"><label>Fecha</label><input type="date" id="ses-fecha"></div>
-                        <div class="input-group"><label>Hora</label><input type="time" id="ses-hora"></div>
-                    </div>
-                    <div class="input-group"><label>Lugar</label><input type="text" id="ses-lugar" placeholder="Planta Talcahuano"></div>
-                    <button onclick="crearSesionCloud()" class="btn-primary mt-4">Generar Enlace para Firmas</button>
-                </div>
-            </div>
-
-            <!-- VISTA 2: RELATOR - MONITOREO Y CIERRE -->
-            <div id="step-monitor" class="step-pane hidden">
-                <div class="card bg-blue-900 text-white">
-                    <h3 class="font-bold mb-2">Enlace de Firma Compartido</h3>
-                    <p class="text-xs text-blue-200 mb-4">Envía este link a los trabajadores para que firmen desde sus celulares:</p>
-                    <div class="flex gap-2">
-                        <input type="text" id="share-url" readonly class="flex-1 bg-blue-800 border-none text-[10px] p-2 rounded text-white">
-                        <button onclick="copiarLink()" class="bg-white text-blue-900 px-3 py-1 rounded text-xs font-bold">Copiar</button>
-                    </div>
-                </div>
-
-                <h3 class="text-lg font-bold text-gray-800 mb-3 flex justify-between">
-                    Firmas Recibidas 
-                    <span id="counter-cloud" class="bg-blue-600 text-white text-xs px-2 py-1 rounded">0</span>
-                </h3>
-                <div id="participantes-cloud-list" class="space-y-3 mb-6">
-                    <!-- Lista de personas que van firmando -->
-                </div>
-
-                <button onclick="generarInformeFinal()" class="btn-primary">Finalizar y Descargar Informe PDF</button>
-            </div>
-
-            <!-- VISTA 3: PARTICIPANTE - LLENAR Y FIRMAR -->
-            <div id="participant-view" class="step-pane hidden">
-                <div id="ses-info-p" class="mb-4 text-center">
-                    <h2 id="p-ses-tema" class="text-xl font-black text-blue-900">...</h2>
-                    <p id="p-ses-relator" class="text-sm text-gray-500 font-medium">Relator: ...</p>
+                <div class="flex items-center gap-2 mb-6">
+                    <span class="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">1</span>
+                    <h2 class="text-xl font-extrabold text-gray-800">Datos de Sesión</h2>
                 </div>
 
                 <div class="card space-y-4">
-                    <div class="input-group"><label>Mi Nombre Completo</label><input type="text" id="p-nombre"></div>
-                    <div class="input-group"><label>RUT</label><input type="text" id="p-rut" placeholder="12.345.678-9"></div>
+                    <div class="input-group">
+                        <label class="required">Tema de Capacitación</label>
+                        <input type="text" id="ses-tema" placeholder="Ej: Uso de EPP en fundición">
+                    </div>
+                    <div class="input-group">
+                        <label class="required">Contenido General</label>
+                        <textarea id="ses-contenido" rows="2" placeholder="Describa los puntos clave..."></textarea>
+                    </div>
                     <div class="grid grid-cols-2 gap-4">
-                        <div class="input-group"><label>Cargo</label><input type="text" id="p-cargo"></div>
-                        <div class="input-group">
-                            <label>Perfil</label>
-                            <select id="p-perfil">
-                                <option>Trabajador</option>
-                                <option>Comité Paritario</option>
-                                <option>Sindicato</option>
-                                <option>Gerencia</option>
-                            </select>
-                        </div>
+                        <div class="input-group"><label class="required">Fecha</label><input type="date" id="ses-fecha"></div>
+                        <div class="input-group"><label class="required">Hora</label><input type="time" id="ses-hora"></div>
                     </div>
-                    <div class="space-y-2">
-                        <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Firme en el recuadro</label>
-                        <div class="canvas-container"><canvas id="p-canvas"></canvas></div>
-                        <button onclick="window.padParticipante.clear()" class="text-[10px] text-red-500 font-bold uppercase">Limpiar</button>
-                    </div>
-                    <button id="btn-enviar-firma" onclick="enviarFirmaParticipante()" class="btn-primary">Enviar Mi Firma</button>
+                </div>
+
+                <div class="card space-y-4">
+                    <h3 class="text-sm font-bold text-blue-800 uppercase tracking-widest border-b pb-2">Identificación Relator</h3>
+                    <div class="input-group"><label class="required">Nombre Relator</label><input type="text" id="rel-nombre"></div>
+                    <div class="input-group"><label class="required">RUT</label><input type="text" id="rel-rut" placeholder="12.345.678-k"></div>
+                    <div class="input-group"><label class="required">Unidad / Cargo</label><input type="text" id="rel-unidad" placeholder="Planta Talcahuano"></div>
+                    <!-- Campos ocultos para completar el PDF posterior -->
+                    <input type="hidden" id="rel-profesion" value="Especialista Seguridad">
+                    <input type="hidden" id="ses-lugar" value="Instalaciones Huachipato">
+                    <input type="hidden" id="ses-duracion" value="60 min">
+                    <input type="hidden" id="ses-objetivo" value="Cumplimiento normativa seguridad industrial">
                 </div>
             </div>
 
-            <!-- PANTALLA ÉXITO -->
-            <div id="step-success" class="step-pane hidden text-center py-20">
+            <!-- PASO 2: PARTICIPANTES -->
+            <div id="step-2" class="step-pane hidden">
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center gap-2">
+                        <span class="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">2</span>
+                        <h2 class="text-xl font-extrabold text-gray-800">Participantes</h2>
+                    </div>
+                    <span id="p-counter" class="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full">0 / 10</span>
+                </div>
+
+                <div id="p-list" class="space-y-4">
+                    <!-- Cards de participantes se inyectan aquí -->
+                </div>
+
+                <button id="btn-add-p" class="w-full py-4 border-2 border-dashed border-blue-300 rounded-2xl text-blue-600 font-bold flex items-center justify-center gap-2 mt-4 active:bg-blue-50">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4"/></svg>
+                    Añadir Participante
+                </button>
+            </div>
+
+            <!-- PASO 3: ÉXITO -->
+            <div id="step-3" class="step-pane hidden text-center pt-10">
                 <div class="bg-green-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
                     <svg class="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
                 </div>
-                <h2 class="text-2xl font-black text-gray-800 mb-2">¡Firma Enviada!</h2>
-                <p class="text-gray-500 text-sm">Gracias. Tu registro ha sido procesado exitosamente por el sistema de Huachipato.</p>
+                <h2 class="text-2xl font-black text-gray-800 mb-2">¡Todo listo!</h2>
+                <p class="text-gray-500 mb-8 px-6">El registro ha sido procesado y el PDF se ha descargado en tu dispositivo.</p>
+                <button onclick="location.reload()" class="btn-primary">Nueva Capacitación</button>
             </div>
-
         </main>
+
+        <!-- NAVEGACIÓN INFERIOR (BOTÓN ACCIÓN) -->
+        <div class="bottom-nav" id="nav-container">
+            <button id="btn-next" class="btn-primary">Continuar</button>
+            <button id="btn-back" class="w-full text-gray-400 font-bold text-sm mt-3 hidden">Volver atrás</button>
+        </div>
     </div>
 
     <script>
-        // Lógica de UI
-        function showStep(id) {
-            document.querySelectorAll('.step-pane').forEach(el => el.classList.add('hidden'));
-            document.getElementById(id).classList.remove('hidden');
-            if(id === 'participant-view') {
-                document.getElementById('status-badge').innerText = "PARTICIPANTE";
-                document.getElementById('status-badge').className = "text-[9px] bg-green-100 text-green-700 px-2 py-1 rounded-full font-bold";
-                initParticipantPad();
-            }
-        }
+        let currentStep = 1;
+        let participantCount = 0;
+        const signaturePads = {};
 
-        // --- LÓGICA DEL RELATOR ---
-        async function crearSesionCloud() {
-            const tema = document.getElementById('ses-tema').value;
-            const relator = document.getElementById('rel-nombre').value;
-            if(!tema || !relator) { alert("Complete tema y relator"); return; }
-
-            const sesData = {
-                tema: tema,
-                relator: relator,
-                fecha: document.getElementById('ses-fecha').value,
-                hora: document.getElementById('ses-hora').value,
-                lugar: document.getElementById('ses-lugar').value,
-                createdAt: new Date()
-            };
-
-            try {
-                // Guardar sesión en Firestore
-                const docRef = await addDoc(collection(window.db, 'artifacts', window.appId, 'public', 'data', 'sesiones'), sesData);
-                window.currentSessionId = docRef.id;
-                
-                // Generar URL para compartir (apunta a la misma página con el ID de sesión)
-                const shareUrl = `${window.location.origin}${window.location.pathname}?session=${docRef.id}`;
-                document.getElementById('share-url').value = shareUrl;
-                
-                showStep('step-monitor');
-                escucharFirmas(docRef.id);
-            } catch (e) {
-                alert("Error al crear sesión en la nube.");
-            }
-        }
-
-        function escucharFirmas(sessionId) {
-            const q = query(collection(window.db, 'artifacts', window.appId, 'public', 'data', 'firmas'), where("sessionId", "==", sessionId));
-            onSnapshot(q, (snapshot) => {
-                const list = document.getElementById('participantes-cloud-list');
-                const counter = document.getElementById('counter-cloud');
-                list.innerHTML = "";
-                counter.innerText = snapshot.size;
-                window.firmasRecolectadas = [];
-
-                snapshot.forEach((doc) => {
-                    const f = doc.data();
-                    window.firmasRecolectadas.push(f);
-                    const item = document.createElement('div');
-                    item.className = "flex items-center justify-between bg-white p-3 rounded-xl border border-blue-50 shadow-sm";
-                    item.innerHTML = `
-                        <div>
-                            <p class="text-sm font-bold text-gray-800">${f.nombre}</p>
-                            <p class="text-[10px] text-gray-400 uppercase">${f.cargo} - ${f.perfil}</p>
-                        </div>
-                        <div class="text-green-500">
-                             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"></path></svg>
-                        </div>
-                    `;
-                    list.appendChild(item);
-                });
-            });
-        }
-
-        function copiarLink() {
-            const copyText = document.getElementById("share-url");
-            copyText.select();
-            document.execCommand("copy");
-            alert("Enlace copiado. Pégalo en WhatsApp o Correo.");
-        }
-
-        // --- LÓGICA DEL PARTICIPANTE ---
-        async function loadSessionData(id) {
-            const docRef = doc(window.db, 'artifacts', window.appId, 'public', 'data', 'sesiones', id);
-            const docSnap = await getDoc(docRef);
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                window.sessionData = data;
-                document.getElementById('p-ses-tema').innerText = data.tema;
-                document.getElementById('p-ses-relator').innerText = `Relator: ${data.relator}`;
-            } else {
-                alert("Enlace de capacitación inválido o expirado.");
-            }
-        }
-
-        async function enviarFirmaParticipante() {
-            const btn = document.getElementById('btn-enviar-firma');
-            const nombre = document.getElementById('p-nombre').value;
-            const firmaImg = window.padParticipante.getData();
-
-            if(!nombre || !firmaImg) { alert("Completa tus datos y firma"); return; }
-            
-            btn.disabled = true;
-            btn.innerText = "Enviando...";
-
-            const firmaData = {
-                sessionId: window.currentSessionId,
-                nombre: nombre,
-                rut: document.getElementById('p-rut').value,
-                cargo: document.getElementById('p-cargo').value,
-                perfil: document.getElementById('p-perfil').value,
-                firma: firmaImg,
-                timestamp: new Date()
-            };
-
-            try {
-                await addDoc(collection(window.db, 'artifacts', window.appId, 'public', 'data', 'firmas'), firmaData);
-                showStep('step-success');
-            } catch (e) {
-                alert("Error al enviar firma.");
-                btn.disabled = false;
-                btn.innerText = "Enviar Mi Firma";
-            }
-        }
-
-        // --- MANEJO DE CANVAS ---
+        // CLASE DE FIRMA OPTIMIZADA
         class SignaturePad {
             constructor(canvasId) {
                 this.canvas = document.getElementById(canvasId);
@@ -292,14 +207,17 @@
                 this.ctx.lineWidth = 2.5;
                 this.ctx.strokeStyle = "#000";
                 this.ctx.lineCap = "round";
+
                 const start = (e) => { this.drawing = true; this.hasContent = true; this.ctx.beginPath(); this.move(e); };
                 const move = (e) => { if(!this.drawing) return; this.move(e); this.ctx.stroke(); };
                 const end = () => { this.drawing = false; };
+
                 this.canvas.addEventListener('touchstart', (e) => { e.preventDefault(); start(e.touches[0]); }, {passive:false});
                 this.canvas.addEventListener('touchmove', (e) => { e.preventDefault(); move(e.touches[0]); }, {passive:false});
                 this.canvas.addEventListener('touchend', end);
                 this.canvas.addEventListener('mousedown', start);
                 this.canvas.addEventListener('mousemove', move);
+                window.addEventListener('mouseup', end);
             }
             move(e) {
                 const r = this.canvas.getBoundingClientRect();
@@ -309,59 +227,179 @@
             getData() { return this.hasContent ? this.canvas.toDataURL() : null; }
         }
 
-        function initParticipantPad() {
-            setTimeout(() => {
-                window.padParticipante = new SignaturePad('p-canvas');
-            }, 500);
+        // FLUJO DE NAVEGACIÓN
+        const btnNext = document.getElementById('btn-next');
+        const btnBack = document.getElementById('btn-back');
+        const progressBar = document.getElementById('progress-bar');
+
+        btnNext.addEventListener('click', () => {
+            if (currentStep === 1) {
+                if(!validateStep1()) return;
+                showStep(2);
+            } else if (currentStep === 2) {
+                if(!validateStep2()) return;
+                generateFinalPDF();
+                showStep(3);
+            }
+        });
+
+        btnBack.addEventListener('click', () => {
+            if (currentStep === 2) showStep(1);
+        });
+
+        function showStep(step) {
+            document.querySelectorAll('.step-pane').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`step-${step}`).classList.remove('hidden');
+            currentStep = step;
+            
+            if(step === 1) {
+                progressBar.style.width = '33%';
+                btnNext.innerText = 'Continuar';
+                btnBack.classList.add('hidden');
+            } else if(step === 2) {
+                progressBar.style.width = '66%';
+                btnNext.innerText = 'Finalizar y Generar PDF';
+                btnBack.classList.remove('hidden');
+                if(participantCount === 0) addParticipant();
+            } else {
+                progressBar.style.width = '100%';
+                document.getElementById('nav-container').classList.add('hidden');
+            }
+            window.scrollTo(0,0);
         }
 
-        // --- INFORME FINAL ---
-        function generarInformeFinal() {
+        function validateStep1() {
+            const fields = ['ses-tema', 'ses-contenido', 'ses-fecha', 'ses-hora', 'rel-nombre', 'rel-rut'];
+            for(let f of fields) {
+                if(!document.getElementById(f).value) {
+                    alert("Por favor completa todos los campos del Relator y Sesión.");
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function addParticipant() {
+            if(participantCount >= 10) return;
+            participantCount++;
+            const id = participantCount;
+            const div = document.createElement('div');
+            div.className = "card space-y-4 border-l-4 border-blue-500 relative";
+            div.innerHTML = `
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-xs font-black text-blue-900 uppercase">Participante #${id}</span>
+                </div>
+                <div class="input-group"><label class="required">Nombre y Apellidos</label><input type="text" id="p-nombre-${id}" class="p-field"></div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="input-group"><label class="required">RUT</label><input type="text" id="p-rut-${id}" class="p-field"></div>
+                    <div class="input-group">
+                        <label class="required">Perfil</label>
+                        <select id="p-perfil-${id}" class="p-field">
+                            <option value="Guardia">Guardia</option>
+                            <option value="Supervisor">Supervisor</option>
+                            <option value="Guardia Táctico">Guardia Táctico</option>
+                            <option value="Operaciones">Operaciones</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="input-group"><label class="required">Cargo</label><input type="text" id="p-cargo-${id}" class="p-field"></div>
+                <div class="space-y-2">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Firma en el recuadro</label>
+                    <div class="canvas-container"><canvas id="canvas-${id}"></canvas></div>
+                    <button type="button" onclick="signaturePads[${id}].clear()" class="text-[10px] text-red-500 font-bold uppercase tracking-tighter">Limpiar firma</button>
+                </div>
+            `;
+            document.getElementById('p-list').appendChild(div);
+            signaturePads[id] = new SignaturePad(`canvas-${id}`);
+            document.getElementById('p-counter').innerText = `${participantCount} / 10`;
+            
+            // Scroll al nuevo participante
+            div.scrollIntoView({behavior: 'smooth'});
+        }
+
+        document.getElementById('btn-add-p').addEventListener('click', addParticipant);
+
+        function validateStep2() {
+            if(participantCount === 0) { alert("Agrega al menos un participante."); return false; }
+            for(let i=1; i<=participantCount; i++) {
+                if(!document.getElementById(`p-nombre-${i}`).value || !signaturePads[i].hasContent) {
+                    alert(`El participante #${i} está incompleto o le falta la firma.`);
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // GENERACIÓN PDF IGUAL A VERSIÓN ANTERIOR PERO CON DATOS DE APP
+        function generateFinalPDF() {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
             const pageWidth = doc.internal.pageSize.width;
             
-            // Header
+            // Encabezado
             doc.setFillColor(30, 58, 138);
             doc.rect(0, 0, pageWidth, 25, 'F');
+            try {
+                const logo = document.getElementById('logo-empresa');
+                doc.addImage(logo, 'JPEG', 15, 4, 16, 16);
+            } catch(e) {}
+            
             doc.setTextColor(255);
             doc.setFontSize(14);
-            doc.text("COMPAÑÍA SIDERÚRGICA HUACHIPATO S.A.", 15, 15);
-            
-            doc.setTextColor(0);
-            doc.setFontSize(14);
-            doc.text("REGISTRO DE CAPACITACIÓN CLOUD", pageWidth/2, 40, {align:'center'});
+            doc.text("COMPAÑÍA SIDERÚRGICA HUACHIPATO S.A.", 35, 12);
+            doc.setFontSize(8);
+            doc.text("RUT: 94.637.000-2 | Avda. Gran Bretaña N° 2910, Talcahuano", 35, 18);
 
-            const ses = document.getElementById('step-1'); // O de la sesión activa
-            const info = [
+            doc.setTextColor(0);
+            doc.setFontSize(16);
+            doc.text("REGISTRO DE ASISTENCIA A CAPACITACIÓN", pageWidth/2, 40, {align:'center'});
+
+            // Datos Sesión
+            const sesData = [
                 ['Relator:', document.getElementById('rel-nombre').value, 'Fecha:', document.getElementById('ses-fecha').value],
-                ['Tema:', {content: document.getElementById('ses-tema').value, colSpan: 3}]
+                ['RUT:', document.getElementById('rel-rut').value, 'Hora:', document.getElementById('ses-hora').value],
+                ['Tema:', {content: document.getElementById('ses-tema').value, colSpan: 3}],
+                ['Contenido:', {content: document.getElementById('ses-contenido').value, colSpan: 3}]
             ];
 
             doc.autoTable({
                 startY: 50,
-                body: info,
-                theme: 'grid'
+                body: sesData,
+                theme: 'plain',
+                styles: { fontSize: 9 }
             });
 
-            const pRows = window.firmasRecolectadas.map((f, i) => [
-                i+1, f.nombre, f.rut, f.cargo, f.perfil, ""
-            ]);
+            // Participantes
+            const pRows = [];
+            const pSignatures = [];
+            for(let i=1; i<=participantCount; i++) {
+                pRows.push([
+                    i, 
+                    document.getElementById(`p-nombre-${i}`).value,
+                    document.getElementById(`p-rut-${i}`).value,
+                    document.getElementById(`p-cargo-${i}`).value,
+                    document.getElementById(`p-perfil-${i}`).value,
+                    ""
+                ]);
+                pSignatures.push(signaturePads[i].getData());
+            }
 
             doc.autoTable({
                 startY: doc.lastAutoTable.finalY + 10,
                 head: [["N°", "Nombre", "RUT", "Cargo", "Perfil", "Firma"]],
                 body: pRows,
-                styles: { minCellHeight: 15, fontSize: 8, valign: 'middle' },
+                theme: 'grid',
+                headStyles: { fillColor: [30, 58, 138] },
+                styles: { fontSize: 8, valign: 'middle', minCellHeight: 15 },
                 didDrawCell: function(data) {
                     if (data.column.index === 5 && data.cell.section === 'body') {
-                        const img = window.firmasRecolectadas[data.row.index].firma;
+                        const img = pSignatures[data.row.index];
                         if(img) doc.addImage(img, 'PNG', data.cell.x + 2, data.cell.y + 2, data.cell.width - 4, data.cell.height - 4);
                     }
                 }
             });
 
-            doc.save("Reporte_Huachipato_Firmas_Cloud.pdf");
+            doc.save(`Huachipato_Registro_${Date.now()}.pdf`);
         }
     </script>
 </body>
